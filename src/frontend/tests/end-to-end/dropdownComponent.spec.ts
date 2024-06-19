@@ -22,7 +22,7 @@ test("dropDownComponent", async ({ page }) => {
   await page.waitForTimeout(1000);
 
   await page.getByTestId("blank-flow").click();
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
 
   await page.getByTestId("extended-disclosure").click();
   await page.getByPlaceholder("Search").click();
@@ -62,6 +62,8 @@ test("dropDownComponent", async ({ page }) => {
     expect(false).toBeTruthy();
   }
 
+  await page.waitForTimeout(1000);
+
   await page.getByTestId("more-options-modal").click();
   await page.getByTestId("edit-button-modal").click();
 
@@ -78,32 +80,32 @@ test("dropDownComponent", async ({ page }) => {
 
   await page.locator('//*[@id="showcredentials_profile_name"]').click();
   expect(
-    await page.locator('//*[@id="showcredentials_profile_name"]').isChecked(),
+    await page.locator('//*[@id="showcredentials_profile_name"]').isChecked()
   ).toBeFalsy();
 
   await page.locator('//*[@id="showcredentials_profile_name"]').click();
   expect(
-    await page.locator('//*[@id="showcredentials_profile_name"]').isChecked(),
+    await page.locator('//*[@id="showcredentials_profile_name"]').isChecked()
   ).toBeTruthy();
 
   await page.locator('//*[@id="showendpoint_url"]').click();
   expect(
-    await page.locator('//*[@id="showendpoint_url"]').isChecked(),
+    await page.locator('//*[@id="showendpoint_url"]').isChecked()
   ).toBeFalsy();
 
   await page.locator('//*[@id="showendpoint_url"]').click();
   expect(
-    await page.locator('//*[@id="showendpoint_url"]').isChecked(),
+    await page.locator('//*[@id="showendpoint_url"]').isChecked()
   ).toBeTruthy();
 
   await page.locator('//*[@id="showregion_name"]').click();
   expect(
-    await page.locator('//*[@id="showregion_name"]').isChecked(),
+    await page.locator('//*[@id="showregion_name"]').isChecked()
   ).toBeFalsy();
 
   await page.locator('//*[@id="showregion_name"]').click();
   expect(
-    await page.locator('//*[@id="showregion_name"]').isChecked(),
+    await page.locator('//*[@id="showregion_name"]').isChecked()
   ).toBeTruthy();
 
   // showmodel_id
@@ -113,7 +115,7 @@ test("dropDownComponent", async ({ page }) => {
   // showmodel_id
   await page.locator('//*[@id="showmodel_id"]').click();
   expect(
-    await page.locator('//*[@id="showmodel_id"]').isChecked(),
+    await page.locator('//*[@id="showmodel_id"]').isChecked()
   ).toBeTruthy();
 
   await page.locator('//*[@id="showcache"]').click();
@@ -124,32 +126,32 @@ test("dropDownComponent", async ({ page }) => {
 
   await page.locator('//*[@id="showcredentials_profile_name"]').click();
   expect(
-    await page.locator('//*[@id="showcredentials_profile_name"]').isChecked(),
+    await page.locator('//*[@id="showcredentials_profile_name"]').isChecked()
   ).toBeFalsy();
 
   await page.locator('//*[@id="showcredentials_profile_name"]').click();
   expect(
-    await page.locator('//*[@id="showcredentials_profile_name"]').isChecked(),
+    await page.locator('//*[@id="showcredentials_profile_name"]').isChecked()
   ).toBeTruthy();
 
   await page.locator('//*[@id="showendpoint_url"]').click();
   expect(
-    await page.locator('//*[@id="showendpoint_url"]').isChecked(),
+    await page.locator('//*[@id="showendpoint_url"]').isChecked()
   ).toBeFalsy();
 
   await page.locator('//*[@id="showendpoint_url"]').click();
   expect(
-    await page.locator('//*[@id="showendpoint_url"]').isChecked(),
+    await page.locator('//*[@id="showendpoint_url"]').isChecked()
   ).toBeTruthy();
 
   await page.locator('//*[@id="showregion_name"]').click();
   expect(
-    await page.locator('//*[@id="showregion_name"]').isChecked(),
+    await page.locator('//*[@id="showregion_name"]').isChecked()
   ).toBeFalsy();
 
   await page.locator('//*[@id="showregion_name"]').click();
   expect(
-    await page.locator('//*[@id="showregion_name"]').isChecked(),
+    await page.locator('//*[@id="showregion_name"]').isChecked()
   ).toBeTruthy();
 
   // showmodel_id
@@ -159,7 +161,7 @@ test("dropDownComponent", async ({ page }) => {
   // showmodel_id
   await page.locator('//*[@id="showmodel_id"]').click();
   expect(
-    await page.locator('//*[@id="showmodel_id"]').isChecked(),
+    await page.locator('//*[@id="showmodel_id"]').isChecked()
   ).toBeTruthy();
 
   await page.getByTestId("dropdown-edit-model_id").click();
@@ -170,7 +172,7 @@ test("dropDownComponent", async ({ page }) => {
     expect(false).toBeTruthy();
   }
 
-  await page.locator('//*[@id="saveChangesBtn"]').click();
+  await page.getByText("Save Changes", { exact: true }).click();
 
   value = await page.getByTestId("dropdown-model_id").innerText();
   if (value !== "ai21.j2-mid-v1") {

@@ -10,7 +10,9 @@
 # PYTHON-BASE
 # Sets up all our shared environment variables
 ################################
-FROM python:3.12-slim as python-base
+
+# use python:3.12.3-slim as the base image until https://github.com/pydantic/pydantic-core/issues/1292 gets resolved
+FROM python:3.12.3-slim as python-base
 
 # python
 ENV PYTHONUNBUFFERED=1 \
@@ -78,14 +80,20 @@ RUN cd src/frontend && npm run build
 COPY src/backend ./src/backend
 RUN cp -r src/frontend/build src/backend/base/langflow/frontend
 RUN rm -rf src/backend/base/dist
+RUN useradd -m -u 1000 user && \
+    mkdir -p /app/langflow && \
+    chown -R user:user /app && \
+    chmod -R u+w /app/langflow
+
+# Update PATH with home/user/.local/bin
+ENV PATH="/home/user/.local/bin:${PATH}"
 RUN cd src/backend/base && $POETRY_HOME/bin/poetry build
 
 # Copy virtual environment and built .tar.gz from builder base
-RUN useradd -m -u 1000 user
-RUN chown -R user:user /app
+
 USER user
 # Install the package from the .tar.gz
-RUN python -m pip install /app/src/backend/base/dist/*.tar.gz
+RUN python -m pip install /app/src/backend/base/dist/*.tar.gz --user
 
 
 ENTRYPOINT ["python", "-m", "langflow", "run"]

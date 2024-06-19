@@ -13,15 +13,18 @@ import { SAVED_HOVER } from "../../../../constants/constants";
 import ExportModal from "../../../../modals/exportModal";
 import FlowLogsModal from "../../../../modals/flowLogsModal";
 import FlowSettingsModal from "../../../../modals/flowSettingsModal";
+import ToolbarSelectItem from "../../../../pages/FlowPage/components/nodeToolbarComponent/toolbarSelectItem";
 import useAlertStore from "../../../../stores/alertStore";
 import useFlowStore from "../../../../stores/flowStore";
 import useFlowsManagerStore from "../../../../stores/flowsManagerStore";
+import { useShortcutsStore } from "../../../../stores/shortcuts";
 import { cn } from "../../../../utils/utils";
 import IconComponent from "../../../genericIconComponent";
 import ShadTooltip from "../../../shadTooltipComponent";
 import { Button } from "../../../ui/button";
 
 export const MenuBar = ({}: {}): JSX.Element => {
+  const shortcuts = useShortcutsStore((state) => state.shortcuts);
   const addFlow = useFlowsManagerStore((state) => state.addFlow);
   const currentFlow = useFlowsManagerStore((state) => state.currentFlow);
   const setErrorData = useAlertStore((state) => state.setErrorData);
@@ -35,21 +38,11 @@ export const MenuBar = ({}: {}): JSX.Element => {
   const navigate = useNavigate();
   const isBuilding = useFlowStore((state) => state.isBuilding);
 
-  function handleAddFlow(duplicate?: boolean) {
+  function handleAddFlow() {
     try {
-      if (duplicate) {
-        if (!currentFlow) {
-          throw new Error("No flow to duplicate");
-        }
-        addFlow(true, currentFlow).then((id) => {
-          setSuccessData({ title: "Flow duplicated successfully" });
-          navigate("/flow/" + id);
-        });
-      } else {
-        addFlow(true).then((id) => {
-          navigate("/flow/" + id);
-        });
-      }
+      addFlow(true).then((id) => {
+        navigate("/flow/" + id);
+      });
     } catch (err) {
       setErrorData(err as { title: string; list?: Array<string> });
     }
@@ -89,15 +82,6 @@ export const MenuBar = ({}: {}): JSX.Element => {
               <IconComponent name="Plus" className="header-menu-options" />
               New
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                handleAddFlow(true);
-              }}
-              className="cursor-pointer"
-            >
-              <IconComponent name="Copy" className="header-menu-options" />
-              Duplicate
-            </DropdownMenuItem>
 
             <DropdownMenuItem
               onClick={() => {
@@ -105,10 +89,7 @@ export const MenuBar = ({}: {}): JSX.Element => {
               }}
               className="cursor-pointer"
             >
-              <IconComponent
-                name="Settings2"
-                className="header-menu-options "
-              />
+              <IconComponent name="Settings2" className="header-menu-options" />
               Settings
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -119,7 +100,7 @@ export const MenuBar = ({}: {}): JSX.Element => {
             >
               <IconComponent
                 name="ScrollText"
-                className="header-menu-options "
+                className="header-menu-options"
               />
               Logs
             </DropdownMenuItem>
@@ -132,11 +113,11 @@ export const MenuBar = ({}: {}): JSX.Element => {
                       title: UPLOAD_ERROR_ALERT,
                       list: [error],
                     });
-                  },
+                  }
                 );
               }}
             >
-              <IconComponent name="FileUp" className="header-menu-options " />
+              <IconComponent name="FileUp" className="header-menu-options" />
               Import
             </DropdownMenuItem>
             <ExportModal>
@@ -154,19 +135,15 @@ export const MenuBar = ({}: {}): JSX.Element => {
               }}
               className="cursor-pointer"
             >
-              <IconComponent name="Undo" className="header-menu-options " />
-              Undo
-              {navigator.userAgent.toUpperCase().includes("MAC") ? (
-                <IconComponent
-                  name="Command"
-                  className="absolute right-[1.15rem] top-[0.65em] h-3.5 w-3.5 stroke-2"
-                />
-              ) : (
-                <span className="absolute right-[1.15rem] top-[0.40em] stroke-2">
-                  Ctrl +{" "}
-                </span>
-              )}
-              <span className="absolute right-2 top-[0.4em]">Z</span>
+              <ToolbarSelectItem
+                value="Undo"
+                icon="Undo"
+                dataTestId=""
+                shortcut={
+                  shortcuts.find((s) => s.name.toLowerCase() === "undo")
+                    ?.shortcut!
+                }
+              />
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
@@ -174,19 +151,15 @@ export const MenuBar = ({}: {}): JSX.Element => {
               }}
               className="cursor-pointer"
             >
-              <IconComponent name="Redo" className="header-menu-options " />
-              Redo
-              {navigator.userAgent.toUpperCase().includes("MAC") ? (
-                <IconComponent
-                  name="Command"
-                  className="absolute right-[1.15rem] top-[0.65em] h-3.5 w-3.5 stroke-2"
-                />
-              ) : (
-                <span className="absolute right-[1.15rem] top-[0.40em] stroke-2">
-                  Ctrl +{" "}
-                </span>
-              )}
-              <span className="absolute right-2 top-[0.4em]">Y</span>
+              <ToolbarSelectItem
+                value="Redo"
+                icon="Redo"
+                dataTestId=""
+                shortcut={
+                  shortcuts.find((s) => s.name.toLowerCase() === "redo")
+                    ?.shortcut!
+                }
+              />
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -214,7 +187,7 @@ export const MenuBar = ({}: {}): JSX.Element => {
               name={isBuilding || saveLoading ? "Loader2" : "CheckCircle2"}
               className={cn(
                 "h-4 w-4",
-                isBuilding || saveLoading ? "animate-spin" : "animate-wiggle",
+                isBuilding || saveLoading ? "animate-spin" : "animate-wiggle"
               )}
             />
             {printByBuildStatus()}

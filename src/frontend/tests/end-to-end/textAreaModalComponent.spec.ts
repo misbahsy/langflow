@@ -21,7 +21,7 @@ test("TextAreaModalComponent", async ({ page }) => {
   }
 
   await page.getByTestId("blank-flow").click();
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
   await page.getByTestId("extended-disclosure").click();
   await page.getByPlaceholder("Search").click();
   await page.getByPlaceholder("Search").fill("prompt");
@@ -51,7 +51,7 @@ test("TextAreaModalComponent", async ({ page }) => {
   await page
     .getByTestId("textarea-text")
     .fill(
-      "test test test test test test test test test test test !@#%*)( 123456789101010101010101111111111 !!!!!!!!!!",
+      "test test test test test test test test test test test !@#%*)( 123456789101010101010101111111111 !!!!!!!!!!"
     );
 
   await page.getByTestId("textarea-text-ExternalLink").click();

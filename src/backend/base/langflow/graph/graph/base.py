@@ -3,9 +3,7 @@ import uuid
 from collections import defaultdict, deque
 from functools import partial
 from itertools import chain
-from typing import TYPE_CHECKING, Callable, Coroutine, Dict, Generator, List, Optional, Tuple, Type, Union
-
-from loguru import logger
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple, Type, Union
 
 from langflow.graph.edge.base import ContractEdge
 from langflow.graph.graph.constants import lazy_load_vertex_dict
@@ -17,7 +15,11 @@ from langflow.graph.vertex.base import Vertex
 from langflow.graph.vertex.types import InterfaceVertex, StateVertex
 from langflow.schema import Record
 from langflow.schema.schema import INPUT_FIELD_NAME, InputType
+from langflow.services.cache.utils import CacheMiss
+from langflow.services.chat.service import ChatService
 from langflow.services.deps import get_chat_service
+from langflow.services.monitor.utils import log_transaction
+from loguru import logger
 
 if TYPE_CHECKING:
     from langflow.graph.schema import ResultData
@@ -256,6 +258,7 @@ class Graph:
         Returns:
             List[Optional["ResultData"]]: The outputs of the graph.
         """
+
         if input_components and not isinstance(input_components, list):
             raise ValueError(f"Invalid components value: {input_components}. Expected list")
         elif input_components is None:
@@ -703,10 +706,10 @@ class Graph:
 
     async def build_vertex(
         self,
-        lock: asyncio.Lock,
-        set_cache_coro: Callable[["Graph", asyncio.Lock], Coroutine],
+        chat_service: ChatService,
         vertex_id: str,
         inputs_dict: Optional[Dict[str, str]] = None,
+        files: Optional[list[str]] = None,
         user_id: Optional[str] = None,
         fallback_to_env_vars: bool = False,
     ):
@@ -729,42 +732,47 @@ class Graph:
         """
         vertex = self.get_vertex(vertex_id)
         try:
-            if not vertex.frozen or not vertex._built:
-                await vertex.build(user_id=user_id, inputs=inputs_dict, fallback_to_env_vars=fallback_to_env_vars)
+            params = ""
+            if vertex.frozen:
+                # Check the cache for the vertex
+                cached_result = await chat_service.get_cache(key=vertex.id)
+                if isinstance(cached_result, CacheMiss):
+                    await vertex.build(
+                        user_id=user_id, inputs=inputs_dict, fallback_to_env_vars=fallback_to_env_vars, files=files
+                    )
+                    await chat_service.set_cache(key=vertex.id, data=vertex)
+                else:
+                    cached_vertex = cached_result["result"]
+                    # Now set update the vertex with the cached vertex
+                    vertex._built = cached_vertex._built
+                    vertex.result = cached_vertex.result
+                    vertex.artifacts = cached_vertex.artifacts
+                    vertex._built_object = cached_vertex._built_object
+                    vertex._custom_component = cached_vertex._custom_component
+                    if vertex.result is not None:
+                        vertex.result.used_frozen_result = True
+
+            else:
+                await vertex.build(
+                    user_id=user_id, inputs=inputs_dict, fallback_to_env_vars=fallback_to_env_vars, files=files
+                )
+                await chat_service.set_cache(key=vertex.id, data=vertex)
 
             if vertex.result is not None:
-                params = vertex._built_object_repr()
+                params = f"{vertex._built_object_repr()}{params}"
                 valid = True
                 result_dict = vertex.result
                 artifacts = vertex.artifacts
             else:
                 raise ValueError(f"No result found for vertex {vertex_id}")
-
-            next_runnable_vertices, top_level_vertices = await self.get_next_and_top_level_vertices(
-                lock, set_cache_coro, vertex
-            )
-            return next_runnable_vertices, top_level_vertices, result_dict, params, valid, artifacts, vertex
+            flow_id = self.flow_id
+            log_transaction(flow_id, vertex, status="success")
+            return result_dict, params, valid, artifacts, vertex
         except Exception as exc:
-            logger.exception(f"Error building vertex: {exc}")
+            logger.exception(f"Error building Component: {exc}")
+            flow_id = self.flow_id
+            log_transaction(flow_id, vertex, status="failure", error=str(exc))
             raise exc
-
-    async def get_next_and_top_level_vertices(
-        self, lock: asyncio.Lock, set_cache_coro: Callable[["Graph", asyncio.Lock], Coroutine], vertex: Vertex
-    ):
-        """
-        Retrieves the next runnable vertices and the top level vertices for a given vertex.
-
-        Args:
-            lock (asyncio.Lock): The lock used to synchronize access to the graph.
-            set_cache_coro (Coroutine): The coroutine used to set the cache for the graph.
-            vertex (Vertex): The vertex for which to retrieve the next runnable and top level vertices.
-
-        Returns:
-            Tuple[List[Vertex], List[Vertex]]: A tuple containing the next runnable vertices and the top level vertices.
-        """
-        next_runnable_vertices = await self.run_manager.get_next_runnable_vertices(lock, set_cache_coro, self, vertex)
-        top_level_vertices = self.run_manager.get_top_level_vertices(self, next_runnable_vertices)
-        return next_runnable_vertices, top_level_vertices
 
     def get_vertex_edges(
         self,
@@ -803,18 +811,16 @@ class Graph:
         chat_service = get_chat_service()
         run_id = uuid.uuid4()
         self.set_run_id(run_id)
+        lock = chat_service._cache_locks[self.run_id]
         while to_process:
             current_batch = list(to_process)  # Copy current deque items to a list
             to_process.clear()  # Clear the deque for new items
             tasks = []
             for vertex_id in current_batch:
                 vertex = self.get_vertex(vertex_id)
-                lock = chat_service._cache_locks[self.run_id]
-                set_cache_coro = partial(chat_service.set_cache, flow_id=self.run_id)
                 task = asyncio.create_task(
                     self.build_vertex(
-                        lock=lock,
-                        set_cache_coro=set_cache_coro,
+                        chat_service=chat_service,
                         vertex_id=vertex_id,
                         user_id=self.user_id,
                         inputs_dict={},
@@ -826,34 +832,50 @@ class Graph:
                 vertex_task_run_count[vertex_id] = vertex_task_run_count.get(vertex_id, 0) + 1
 
             logger.debug(f"Running layer {layer_index} with {len(tasks)} tasks")
-            next_runnable_vertices = await self._execute_tasks(tasks)
+            try:
+                next_runnable_vertices = await self._execute_tasks(tasks, lock=lock)
+            except Exception as e:
+                logger.error(f"Error executing tasks in layer {layer_index}: {e}")
+                raise e
+            if not next_runnable_vertices:
+                break
             to_process.extend(next_runnable_vertices)
+            layer_index += 1
 
         logger.debug("Graph processing complete")
         return self
 
-    async def _execute_tasks(self, tasks: List[asyncio.Task]) -> List[str]:
+    async def _execute_tasks(self, tasks: List[asyncio.Task], lock: asyncio.Lock) -> List[str]:
         """Executes tasks in parallel, handling exceptions for each task."""
         results = []
-        for i, task in enumerate(asyncio.as_completed(tasks)):
-            try:
-                result = await task
-                if isinstance(result, tuple) and len(result) == 7:
-                    # Get the next runnable vertices
-                    next_runnable_vertices = result[0]
-                    results.extend(next_runnable_vertices)
-                else:
-                    raise ValueError(f"Invalid result: {result}")
-            except Exception as e:
-                # Log the exception along with the task name for easier debugging
-                # task_name = task.get_name()
-                # coroutine has not attribute get_name
-                task_name = tasks[i].get_name()
-                logger.error(f"Task {task_name} failed with exception: {e}")
+        completed_tasks = await asyncio.gather(*tasks, return_exceptions=True)
+        vertices: List[Vertex] = []
+
+        for i, result in enumerate(completed_tasks):
+            task_name = tasks[i].get_name()
+            if isinstance(result, Exception):
+                logger.error(f"Task {task_name} failed with exception: {result}")
                 # Cancel all remaining tasks
-                for t in tasks[i:]:
+                for t in tasks[i + 1 :]:
                     t.cancel()
-                raise e
+                raise result
+            elif isinstance(result, tuple) and len(result) == 5:
+                vertices.append(result[4])
+            else:
+                raise ValueError(f"Invalid result from task {task_name}: {result}")
+
+        for v in vertices:
+            # set all executed vertices as non-runnable to not run them again.
+            # they could be calculated as predecessor or successors of parallel vertices
+            # This could usually happen with input vertices like ChatInput
+            self.run_manager.remove_vertex_from_runnables(v.id)
+
+        set_cache_coro = partial(get_chat_service().set_cache, key=self.flow_id)
+        for v in vertices:
+            next_runnable_vertices = await self.run_manager.get_next_runnable_vertices(
+                lock, set_cache_coro, graph=self, vertex=v, cache=False
+            )
+            results.extend(next_runnable_vertices)
         return results
 
     def topological_sort(self) -> List[Vertex]:

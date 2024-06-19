@@ -1,13 +1,15 @@
+from copy import deepcopy
 from typing import List, Optional, Union
 
+import chromadb
 from chromadb.config import Settings
 from langchain_chroma import Chroma
 from langchain_core.embeddings import Embeddings
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStore
-
+from langflow.base.vectorstores.utils import chroma_collection_to_records
 from langflow.custom import CustomComponent
-from langflow.schema.schema import Record
+from langflow.schema import Record
 
 
 class ChromaComponent(CustomComponent):
@@ -47,6 +49,11 @@ class ChromaComponent(CustomComponent):
                 "display_name": "Server SSL Enabled",
                 "advanced": True,
             },
+            "allow_duplicates": {
+                "display_name": "Allow Duplicates",
+                "advanced": True,
+                "info": "If false, will not add documents that are already in the Vector Store.",
+            },
         }
 
     def build(
@@ -60,6 +67,7 @@ class ChromaComponent(CustomComponent):
         chroma_server_host: Optional[str] = None,
         chroma_server_http_port: Optional[int] = None,
         chroma_server_grpc_port: Optional[int] = None,
+        allow_duplicates: bool = False,
     ) -> Union[VectorStore, BaseRetriever]:
         """
         Builds the Vector Store or BaseRetriever object.
@@ -74,6 +82,7 @@ class ChromaComponent(CustomComponent):
         - chroma_server_host (Optional[str]): The host for the Chroma server.
         - chroma_server_http_port (Optional[int]): The HTTP port for the Chroma server.
         - chroma_server_grpc_port (Optional[int]): The gRPC port for the Chroma server.
+        - allow_duplicates (bool): Whether to allow duplicates in the Vector Store.
 
         Returns:
         - Union[VectorStore, BaseRetriever]: The Vector Store or BaseRetriever object.
@@ -81,7 +90,7 @@ class ChromaComponent(CustomComponent):
 
         # Chroma settings
         chroma_settings = None
-
+        client = None
         if chroma_server_host is not None:
             chroma_settings = Settings(
                 chroma_server_cors_allow_origins=chroma_server_cors_allow_origins or [],
@@ -90,33 +99,36 @@ class ChromaComponent(CustomComponent):
                 chroma_server_grpc_port=chroma_server_grpc_port or None,
                 chroma_server_ssl_enabled=chroma_server_ssl_enabled,
             )
-
-        # If documents, then we need to create a Chroma instance using .from_documents
+            client = chromadb.HttpClient(settings=chroma_settings)
 
         # Check index_directory and expand it if it is a relative path
         if index_directory is not None:
             index_directory = self.resolve_path(index_directory)
 
+        chroma = Chroma(
+            persist_directory=index_directory or None,
+            client=client,
+            embedding_function=embedding,
+            collection_name=collection_name,
+        )
+        if allow_duplicates:
+            stored_records = []
+        else:
+            stored_records = chroma_collection_to_records(chroma.get())
+            _stored_documents_without_id = []
+            for record in deepcopy(stored_records):
+                del record.id
+                _stored_documents_without_id.append(record)
         documents = []
         for _input in inputs or []:
             if isinstance(_input, Record):
-                documents.append(_input.to_lc_document())
+                if _input not in _stored_documents_without_id:
+                    documents.append(_input.to_lc_document())
             else:
-                documents.append(_input)
-        if documents is not None and embedding is not None:
-            if len(documents) == 0:
-                raise ValueError("If documents are provided, there must be at least one document.")
-            chroma = Chroma.from_documents(
-                documents=documents,  # type: ignore
-                persist_directory=index_directory,
-                collection_name=collection_name,
-                embedding=embedding,
-                client_settings=chroma_settings,
-            )
-        else:
-            chroma = Chroma(
-                persist_directory=index_directory,
-                client_settings=chroma_settings,
-                embedding_function=embedding,
-            )
+                raise ValueError("Inputs must be a Record objects.")
+
+        if documents and embedding is not None:
+            chroma.add_documents(documents)
+
+        self.status = stored_records
         return chroma

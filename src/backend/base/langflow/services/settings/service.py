@@ -27,7 +27,6 @@ class SettingsService(Service):
 
         with open(file_path, "r") as f:
             settings_dict = yaml.safe_load(f)
-            settings_dict = {k.upper(): v for k, v in settings_dict.items()}
 
             for key in settings_dict:
                 if key not in Settings.model_fields.keys():
@@ -42,3 +41,7 @@ class SettingsService(Service):
             CONFIG_DIR=settings.config_dir,
         )
         return cls(settings, auth_settings)
+
+    def set(self, key, value):
+        setattr(self.settings, key, value)
+        return self.settings

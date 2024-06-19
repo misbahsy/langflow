@@ -589,7 +589,8 @@ export const CONTROL_INPUT_STATE = {
 export const CONTROL_PATCH_USER_STATE = {
   password: "",
   cnfPassword: "",
-  gradient: "",
+  profilePicture: "",
+  apikey: "",
 };
 
 export const CONTROL_LOGIN_STATE = {
@@ -606,95 +607,14 @@ export const CONTROL_NEW_USER = {
 
 export const tabsCode = [];
 
-export function tabsArray(codes: string[], method: number) {
-  if (!method) return;
-  if (method === 0) {
-    return [
-      {
-        name: "cURL",
-        mode: "bash",
-        image: "https://curl.se/logo/curl-symbol-transparent.png",
-        language: "sh",
-        code: codes[0],
-      },
-      {
-        name: "Python API",
-        mode: "python",
-        image:
-          "https://images.squarespace-cdn.com/content/v1/5df3d8c5d2be5962e4f87890/1628015119369-OY4TV3XJJ53ECO0W2OLQ/Python+API+Training+Logo.png?format=1000w",
-        language: "py",
-        code: codes[1],
-      },
-      {
-        name: "Python Code",
-        mode: "python",
-        image: "https://cdn-icons-png.flaticon.com/512/5968/5968350.png",
-        language: "py",
-        code: codes[2],
-      },
-      {
-        name: "Chat Widget HTML",
-        description:
-          "Insert this code anywhere in your &lt;body&gt; tag. To use with react and other libs, check our <a class='link-color' href='https://langflow.org/guidelines/widget'>documentation</a>.",
-        mode: "html",
-        image: "https://cdn-icons-png.flaticon.com/512/5968/5968350.png",
-        language: "py",
-        code: codes[3],
-      },
-    ];
-  }
-  return [
-    {
-      name: "cURL",
-      mode: "bash",
-      image: "https://curl.se/logo/curl-symbol-transparent.png",
-      language: "sh",
-      code: codes[0],
-    },
-    {
-      name: "Python API",
-      mode: "python",
-      image:
-        "https://images.squarespace-cdn.com/content/v1/5df3d8c5d2be5962e4f87890/1628015119369-OY4TV3XJJ53ECO0W2OLQ/Python+API+Training+Logo.png?format=1000w",
-      language: "py",
-      code: codes[1],
-    },
-    {
-      name: "Python Code",
-      mode: "python",
-      language: "py",
-      image: "https://cdn-icons-png.flaticon.com/512/5968/5968350.png",
-      code: codes[2],
-    },
-    {
-      name: "Chat Widget HTML",
-      description:
-        "Insert this code anywhere in your &lt;body&gt; tag. To use with react and other libs, check our <a class='link-color' href='https://langflow.org/guidelines/widget'>documentation</a>.",
-      mode: "html",
-      image: "https://cdn-icons-png.flaticon.com/512/5968/5968350.png",
-      language: "py",
-      code: codes[3],
-    },
-    {
-      name: "Tweaks",
-      mode: "python",
-      image: "https://cdn-icons-png.flaticon.com/512/5968/5968350.png",
-      language: "py",
-      code: codes[4],
-    },
-  ];
-}
 export const FETCH_ERROR_MESSAGE = "Couldn't establish a connection.";
 export const FETCH_ERROR_DESCRIPION =
   "Check if everything is working properly and try again.";
 
 export const SIGN_UP_SUCCESS = "Account created! Await admin activation. ";
 
-export const API_PAGE_PARAGRAPH_1 =
-  "Your secret API keys are listed below. Please note that we do not display your secret API keys again after you generate them.";
-
-export const API_PAGE_PARAGRAPH_2 =
-  "Do not share your API key with others, or expose it in the browser or other client-side code.";
+export const API_PAGE_PARAGRAPH =
+  "Your secret API keys are listed below. Do not share your API key with others, or expose it in the browser or other client-side code.";
 
 export const API_PAGE_USER_KEYS =
   "This user does not have any keys assigned at the moment.";
@@ -741,6 +661,9 @@ export const OUTPUT_TYPES = new Set([
 export const CHAT_FIRST_INITIAL_TEXT =
   "Start a conversation and click the agent's thoughts";
 
+export const TOOLTIP_OUTDATED_NODE =
+  "Your component is outdated. Click to update (data may be lost)";
+
 export const CHAT_SECOND_INITIAL_TEXT = "to inspect the chaining process.";
 
 export const ZERO_NOTIFICATIONS = "No new notifications";
@@ -748,7 +671,7 @@ export const ZERO_NOTIFICATIONS = "No new notifications";
 export const SUCCESS_BUILD = "Built sucessfully ✨";
 
 export const ALERT_SAVE_WITH_API =
-  "Caution: Uncheck this box only removes API keys from fields specifically designated for API keys.";
+  "Caution: Unchecking this box only removes API keys from fields specifically designated for API keys.";
 
 export const SAVE_WITH_API_CHECKBOX = "Save with my API keys";
 export const EDIT_TEXT_MODAL_TITLE = "Edit Text";
@@ -811,8 +734,111 @@ export const AUTHORIZED_DUPLICATE_REQUESTS = [
 
 export const SAVE_DEBOUNCE_TIME = 300;
 
+export const IS_MAC = navigator.userAgent.toUpperCase().includes("MAC");
+
+export const defaultShortcuts = [
+  {
+    name: "Advanced Settings",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + Shift + A`,
+  },
+  {
+    name: "Minimize",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + Q`,
+  },
+  {
+    name: "Code",
+    shortcut: `Space`,
+  },
+  {
+    name: "Copy",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + C`,
+  },
+  {
+    name: "Duplicate",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + D`,
+  },
+  {
+    name: "Component Share",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + Shift + S`,
+  },
+  {
+    name: "Docs",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + Shift + D`,
+  },
+  {
+    name: "Save",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + S`,
+  },
+  {
+    name: "Delete",
+    shortcut: "Backspace",
+  },
+  {
+    name: "Open playground",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + K`,
+  },
+  {
+    name: "Undo",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + Z`,
+  },
+  {
+    name: "Redo",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + Y`,
+  },
+  {
+    name: "Group",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + G`,
+  },
+  {
+    name: "Cut",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + X`,
+  },
+  {
+    name: "Paste",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + V`,
+  },
+  {
+    name: "API",
+    shortcut: `R`,
+  },
+  {
+    name: "Download",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + J`,
+  },
+  {
+    name: "Update",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + U`,
+  },
+  {
+    name: "Freeze",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + F`,
+  },
+  {
+    name: "Flow Share",
+    shortcut: `${IS_MAC ? "Cmd" : "Ctrl"} + B`,
+  },
+  {
+    name: "Play",
+    shortcut: `P`,
+  },
+  {
+    name: "Output Inspection",
+    shortcut: `O`,
+  },
+];
+
 export const DEFAULT_TABLE_ALERT_MSG = `Oops! It seems there's no data to display right now. Please check back later.`;
 
 export const DEFAULT_TABLE_ALERT_TITLE = "No Data Available";
 
 export const LOCATIONS_TO_RETURN = ["/flow/", "/settings/"];
+
+export const MAX_BATCH_SIZE = 50;
+
+export const MODAL_CLASSES =
+  "nopan nodelete nodrag noundo nocopy fixed inset-0 bottom-0 left-0 right-0 top-0 z-50 overflow-auto bg-blur-shared backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0";
+
+export const ERROR_UPDATING_COMPONENT =
+  "An unexpected error occurred while updating the Component. Please try again.";
+export const TITLE_ERROR_UPDATING_COMPONENT =
+  "Error while updating the Component";

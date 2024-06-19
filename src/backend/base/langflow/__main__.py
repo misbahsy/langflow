@@ -77,7 +77,7 @@ def set_var_for_macos_issue():
 def run(
     host: str = typer.Option("127.0.0.1", help="Host to bind the server to.", envvar="LANGFLOW_HOST"),
     workers: int = typer.Option(1, help="Number of worker processes.", envvar="LANGFLOW_WORKERS"),
-    timeout: int = typer.Option(300, help="Worker timeout in seconds."),
+    timeout: int = typer.Option(300, help="Worker timeout in seconds.", envvar="LANGFLOW_WORKER_TIMEOUT"),
     port: int = typer.Option(7860, help="Port to listen on.", envvar="LANGFLOW_PORT"),
     components_path: Optional[Path] = typer.Option(
         Path(__file__).parent / "components",
@@ -121,7 +121,7 @@ def run(
     ),
 ):
     """
-    Run the Langflow.
+    Run Langflow.
     """
 
     configure(log_level=log_level, log_file=log_file)
@@ -145,6 +145,10 @@ def run(
     if is_port_in_use(port, host):
         port = get_free_port(port)
 
+    settings_service = get_settings_service()
+
+    settings_service.set("worker_timeout", timeout)
+
     options = {
         "bind": f"{host}:{port}",
         "workers": get_number_of_workers(workers),
@@ -163,7 +167,7 @@ def run(
         else:
             # Run using gunicorn on Linux
             process = run_on_mac_or_linux(host, port, log_level, options, app)
-        if open_browser:
+        if open_browser and not backend_only:
             click.launch(f"http://{host}:{port}")
         if process:
             process.join()

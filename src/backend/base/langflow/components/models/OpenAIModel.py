@@ -28,7 +28,7 @@ class OpenAIModelComponent(LCModelComponent):
 
     def build_config(self):
         return {
-            "input_value": {"display_name": "Input"},
+            "input_value": {"display_name": "Input", "input_types": ["Text", "Record", "Prompt"]},
             "max_tokens": {
                 "display_name": "Max Tokens",
                 "advanced": True,
@@ -78,8 +78,8 @@ class OpenAIModelComponent(LCModelComponent):
         self,
         input_value: Text,
         openai_api_key: str,
-        temperature: float,
-        model_name: str = "gpt-4o",
+        temperature: float = 0.1,
+        model_name: str = "gpt-3.5-turbo",
         max_tokens: Optional[int] = 256,
         model_kwargs: NestedDict = {},
         openai_api_base: Optional[str] = None,

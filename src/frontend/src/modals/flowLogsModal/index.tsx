@@ -1,49 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { ColDef, ColGroupDef } from "ag-grid-community";
+import { useEffect, useMemo, useRef, useState } from "react";
 import IconComponent from "../../components/genericIconComponent";
-import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import useFlowsManagerStore from "../../stores/flowsManagerStore";
-import { FlowSettingsPropsType } from "../../types/components";
-import { FlowType, NodeDataType } from "../../types/flow";
-import BaseModal from "../baseModal";
 import TableComponent from "../../components/tableComponent";
+import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { getMessagesTable, getTransactionTable } from "../../controllers/API";
-import {
-  ColDef,
-  ColGroupDef,
-  SizeColumnsToFitGridStrategy,
-} from "ag-grid-community";
 import useAlertStore from "../../stores/alertStore";
 import useFlowStore from "../../stores/flowStore";
+import useFlowsManagerStore from "../../stores/flowsManagerStore";
+import { FlowSettingsPropsType } from "../../types/components";
+import { NodeDataType } from "../../types/flow";
+import BaseModal from "../baseModal";
 
 export default function FlowLogsModal({
   open,
   setOpen,
 }: FlowSettingsPropsType): JSX.Element {
-  const saveFlow = useFlowsManagerStore((state) => state.saveFlow);
   const nodes = useFlowStore((state) => state.nodes);
-  const currentFlow = useFlowsManagerStore((state) => state.currentFlow);
   const currentFlowId = useFlowsManagerStore((state) => state.currentFlowId);
-  const flows = useFlowsManagerStore((state) => state.flows);
   const setNoticeData = useAlertStore((state) => state.setNoticeData);
 
-  useEffect(() => {
-    setName(currentFlow!.name);
-    setDescription(currentFlow!.description);
-  }, [currentFlow!.name, currentFlow!.description, open]);
-
-  const [name, setName] = useState(currentFlow!.name);
-  const [description, setDescription] = useState(currentFlow!.description);
   const [columns, setColumns] = useState<Array<ColDef | ColGroupDef>>([]);
   const [rows, setRows] = useState<any>([]);
   const [activeTab, setActiveTab] = useState("Executions");
   const noticed = useRef(false);
-
-  function handleClick(): void {
-    currentFlow!.name = name;
-    currentFlow!.description = description;
-    saveFlow(currentFlow!);
-    setOpen(false);
-  }
 
   useEffect(() => {
     if (activeTab === "Executions") {
@@ -53,11 +32,13 @@ export default function FlowLogsModal({
         setRows(rows);
       });
     } else if (activeTab === "Messages") {
-      getMessagesTable(currentFlowId, "union").then((data) => {
-        const { columns, rows } = data;
-        setColumns(columns.map((col) => ({ ...col, editable: true })));
-        setRows(rows);
-      });
+      getMessagesTable("union", currentFlowId, ["index", "flow_id"]).then(
+        (data) => {
+          const { columns, rows } = data;
+          setColumns(columns.map((col) => ({ ...col, editable: true })));
+          setRows(rows);
+        }
+      );
     }
 
     if (open && activeTab === "Messages" && !noticed.current) {
@@ -66,7 +47,7 @@ export default function FlowLogsModal({
         .some((template) => template["stream"] && template["stream"].value);
       console.log(
         haStream,
-        nodes.map((nodes) => (nodes.data as NodeDataType).node!.template),
+        nodes.map((nodes) => (nodes.data as NodeDataType).node!.template)
       );
       if (haStream) {
         setNoticeData({
@@ -80,26 +61,27 @@ export default function FlowLogsModal({
     }
   }, [open, activeTab]);
 
-  const [nameLists, setNameList] = useState<string[]>([]);
-
-  useEffect(() => {
-    const tempNameList: string[] = [];
-    flows.forEach((flow: FlowType) => {
-      if ((flow.is_component ?? false) === false) tempNameList.push(flow.name);
-    });
-    setNameList(tempNameList.filter((name) => name !== currentFlow!.name));
-  }, [flows]);
+  const tableComponentRender = useMemo(() => {
+    return (
+      <TableComponent
+        key={activeTab}
+        readOnlyEdit
+        className="h-max-full h-full w-full"
+        pagination={rows.length === 0 ? false : true}
+        columnDefs={columns}
+        rowHeight={48}
+        autoSizeStrategy={{ type: "fitGridWidth" }}
+        rowData={rows}
+        headerHeight={rows.length === 0 ? 0 : undefined}
+      />
+    );
+  }, [activeTab]);
 
   return (
     <BaseModal open={open} setOpen={setOpen} size="large">
-      <BaseModal.Header description="Inspect component executions and monitor sent messages in the playground.">
-        <div className="flex w-full justify-between">
-          <div className="flex h-fit w-32 items-center">
-            <span className="pr-2">Logs</span>
-            <IconComponent name="ScrollText" className="mr-2 h-4 w-4 " />
-          </div>
-          <div className="flex h-fit w-32 items-center"></div>
-        </div>
+      <BaseModal.Header description="Inspect component executions and monitor sent messages in the playground">
+        <span className="pr-2">Logs</span>
+        <IconComponent name="ScrollText" className="mr-2 h-4 w-4" />
       </BaseModal.Header>
       <BaseModal.Content>
         <Tabs
@@ -114,15 +96,7 @@ export default function FlowLogsModal({
             <TabsTrigger value={"Messages"}>Messages</TabsTrigger>
           </TabsList>
         </Tabs>
-        <TableComponent
-          readOnlyEdit
-          className="h-max-full h-full w-full"
-          pagination={rows.length === 0 ? false : true}
-          columnDefs={columns}
-          autoSizeStrategy={{ type: "fitGridWidth" }}
-          rowData={rows}
-          headerHeight={rows.length === 0 ? 0 : undefined}
-        ></TableComponent>
+        {tableComponentRender}
       </BaseModal.Content>
     </BaseModal>
   );

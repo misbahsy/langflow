@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   CONSOLE_ERROR_MSG,
-  CONSOLE_SUCCESS_MSG,
   INVALID_FILE_ALERT,
 } from "../../constants/alerts_constants";
 import { uploadFile } from "../../controllers/API";
@@ -49,12 +48,12 @@ export default function InputFileComponent({
   const handleButtonClick = (): void => {
     // Create a file input element
     const input = document.createElement("input");
+    document.body.appendChild(input);
     input.type = "file";
     input.accept = fileTypes?.join(",");
     input.style.display = "none"; // Hidden from view
     input.multiple = false; // Allow only one file selection
-
-    input.onchange = (event: Event): void => {
+    const onChangeFile = (event: Event): void => {
       setLoading(true);
 
       // Get the selected file
@@ -66,10 +65,8 @@ export default function InputFileComponent({
         uploadFile(file, currentFlowId)
           .then((res) => res.data)
           .then((data) => {
-            console.log(CONSOLE_SUCCESS_MSG);
             // Get the file name from the response
             const { file_path } = data;
-            console.log("File name:", file_path);
 
             // sets the value that goes to the backend
             onFileChange(file_path);
@@ -93,6 +90,8 @@ export default function InputFileComponent({
       }
     };
 
+    input.addEventListener("change", onChangeFile);
+
     // Trigger the file selection dialog
     input.click();
   };
@@ -106,8 +105,8 @@ export default function InputFileComponent({
             editNode
               ? "input-edit-node input-dialog text-muted-foreground"
               : disabled
-                ? "input-disable input-dialog primary-input"
-                : "input-dialog primary-input text-muted-foreground"
+              ? "input-disable input-dialog primary-input"
+              : "input-dialog primary-input text-muted-foreground"
           }
         >
           {myValue !== "" ? myValue : "No file"}
@@ -118,7 +117,7 @@ export default function InputFileComponent({
               name="FileSearch2"
               className={
                 "icons-parameters-comp" +
-                (disabled ? " text-ring " : " hover:text-accent-foreground")
+                (disabled ? " text-ring" : " hover:text-accent-foreground")
               }
             />
           )}

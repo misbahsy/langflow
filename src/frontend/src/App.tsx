@@ -15,23 +15,24 @@ import {
 } from "./constants/constants";
 import { AuthContext } from "./contexts/authContext";
 import { autoLogin, getGlobalVariables, getHealth } from "./controllers/API";
+import { setupAxiosDefaults } from "./controllers/API/utils";
 import useTrackLastVisitedPath from "./hooks/use-track-last-visited-path";
 import Router from "./routes";
+import { Case } from "./shared/components/caseComponent";
 import useAlertStore from "./stores/alertStore";
 import { useDarkStore } from "./stores/darkStore";
 import useFlowsManagerStore from "./stores/flowsManagerStore";
 import { useFolderStore } from "./stores/foldersStore";
 import { useGlobalVariablesStore } from "./stores/globalVariablesStore/globalVariables";
 import { useStoreStore } from "./stores/storeStore";
-import { useTypesStore } from "./stores/typesStore";
 export default function App() {
   useTrackLastVisitedPath();
 
   const removeFromTempNotificationList = useAlertStore(
-    (state) => state.removeFromTempNotificationList,
+    (state) => state.removeFromTempNotificationList
   );
   const tempNotificationList = useAlertStore(
-    (state) => state.tempNotificationList,
+    (state) => state.tempNotificationList
   );
   const [fetchError, setFetchError] = useState(false);
   const isLoading = useFlowsManagerStore((state) => state.isLoading);
@@ -42,21 +43,18 @@ export default function App() {
 
   const { isAuthenticated, login, setUserData, setAutoLogin, getUser } =
     useContext(AuthContext);
-  const refreshFlows = useFlowsManagerStore((state) => state.refreshFlows);
   const setLoading = useAlertStore((state) => state.setLoading);
   const fetchApiData = useStoreStore((state) => state.fetchApiData);
-  const getTypes = useTypesStore((state) => state.getTypes);
   const refreshVersion = useDarkStore((state) => state.refreshVersion);
   const refreshStars = useDarkStore((state) => state.refreshStars);
   const setGlobalVariables = useGlobalVariablesStore(
-    (state) => state.setGlobalVariables,
+    (state) => state.setGlobalVariables
   );
   const checkHasStore = useStoreStore((state) => state.checkHasStore);
   const navigate = useNavigate();
   const dark = useDarkStore((state) => state.dark);
 
-  const getFoldersApi = useFolderStore((state) => state.getFoldersApi);
-  const loadingFolders = useFolderStore((state) => state.loading);
+  const isLoadingFolders = useFolderStore((state) => state.isLoadingFolders);
 
   const [isLoadingHealth, setIsLoadingHealth] = useState(false);
 
@@ -79,7 +77,6 @@ export default function App() {
           login(user["access_token"]);
           setUserData(user);
           setAutoLogin(true);
-          setLoading(false);
           fetchAllData();
         }
       })
@@ -114,13 +111,14 @@ export default function App() {
     return new Promise<void>(async (resolve, reject) => {
       if (isAuthenticated) {
         try {
-          await getFoldersApi();
-          await getTypes();
-          await refreshFlows();
+          await setupAxiosDefaults();
+
           const res = await getGlobalVariables();
           setGlobalVariables(res);
+
           checkHasStore();
           fetchApiData();
+
           resolve();
         } catch (error) {
           console.error("Failed to fetch data:", error);
@@ -173,6 +171,8 @@ export default function App() {
     }
   };
 
+  const isLoadingApplication = isLoading || isLoadingFolders;
+
   return (
     //need parent component with width and height
     <div className="flex h-full flex-col">
@@ -195,15 +195,15 @@ export default function App() {
             ></FetchErrorComponent>
           }
 
-          {isLoading || loadingFolders ? (
+          <Case condition={isLoadingApplication}>
             <div className="loading-page-panel">
               <LoadingComponent remSize={50} />
             </div>
-          ) : (
-            <>
-              <Router />
-            </>
-          )}
+          </Case>
+
+          <Case condition={!isLoadingApplication}>
+            <Router />
+          </Case>
         </>
       </ErrorBoundary>
       <div></div>
@@ -219,30 +219,23 @@ export default function App() {
                   id={alert.id}
                   removeAlert={removeAlert}
                 />
+              ) : alert.type === "notice" ? (
+                <NoticeAlert
+                  key={alert.id}
+                  title={alert.title}
+                  link={alert.link}
+                  id={alert.id}
+                  removeAlert={removeAlert}
+                />
               ) : (
-                alert.type === "notice" && (
-                  <NoticeAlert
+                alert.type === "success" && (
+                  <SuccessAlert
                     key={alert.id}
                     title={alert.title}
-                    link={alert.link}
                     id={alert.id}
                     removeAlert={removeAlert}
                   />
                 )
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="z-40 flex flex-col-reverse">
-          {tempNotificationList.map((alert) => (
-            <div key={alert.id}>
-              {alert.type === "success" && (
-                <SuccessAlert
-                  key={alert.id}
-                  title={alert.title}
-                  id={alert.id}
-                  removeAlert={removeAlert}
-                />
               )}
             </div>
           ))}
